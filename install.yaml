@@ -3,4 +3,8 @@ name: import-remote-db
 project_files:
   - docker-compose.import-remote-db.yaml
 
+global_files:
+  - commands/host/import-remote-db
+  - commands/host/import-remote-db-1pw
+
 ddev_version_constraint: '>= v1.24.3'

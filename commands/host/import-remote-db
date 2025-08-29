@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+
+## #ddev-generated: If you want to edit and own this file, remove this line.
+# Description: Import a remote MySQL database into DDEV
+# Usage: ddev import-remote-db --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>] [--password <password>]
+# Example: ddev import-remote-db --host db.example.com --user dbuser --database dbname --port 3307 --ssh-host ssh.example.com --ssh-user remoteuser --password mypass
+
+set -e
+
+
+# Default values
+PORT=3306
+
+# Parse flags
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  case $key in
+    --host)
+      HOST="$2"
+      shift; shift
+      ;;
+    --user)
+      USER="$2"
+      shift; shift
+      ;;
+    --database)
+      DATABASE="$2"
+      shift; shift
+      ;;
+    --port)
+      PORT="$2"
+      shift; shift
+      ;;
+    --ssh-host)
+      SSH_HOST="$2"
+      shift; shift
+      ;;
+    --ssh-user)
+      SSH_USER="$2"
+      shift; shift
+      ;;
+    --password)
+      PASSWORD="$2"
+      shift; shift
+      ;;
+    -h|--help)
+      echo "Usage: $0 --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>] [--password <password>]"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Usage: $0 --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>] [--password <password>]"
+      exit 1
+      ;;
+  esac
+done
+
+EXPORT_DIR=".ddev/import-remote-db"
+DUMP_FILE="$EXPORT_DIR/${DATABASE}_remote_dump.sql"
+
+
+
+if [ -z "$HOST" ] || [ -z "$USER" ] || [ -z "$DATABASE" ]; then
+  echo "Usage: $0 --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>]"
+  exit 1
+fi
+
+# Ensure export directory exists
+mkdir -p "$EXPORT_DIR"
+
+
+# Ensure .gitignore contains import-remote-db/ entry
+ensure_gitignore_has_import_remote_db() {
+  GITIGNORE_FILE=".ddev/.gitignore"
+  if [ ! -f "$GITIGNORE_FILE" ]; then
+    echo "import-remote-db/" > "$GITIGNORE_FILE"
+  elif ! grep -qxF "import-remote-db/" "$GITIGNORE_FILE"; then
+    echo "import-remote-db/" >> "$GITIGNORE_FILE"
+  fi
+}
+
+ensure_gitignore_has_import_remote_db
+
+dump_and_clean() {
+  if [ -n "$SSH_HOST" ]; then
+    # SSH-based dump
+    SSH_TARGET="$SSH_HOST"
+    if [ -n "$SSH_USER" ]; then
+      SSH_TARGET="$SSH_USER@$SSH_HOST"
+    fi
+    echo "Dumping remote database $DATABASE from $USER@$HOST:$PORT via SSH ($SSH_TARGET) to $DUMP_FILE..."
+    if [ -n "$PASSWORD" ]; then
+      # Password provided, no prompt
+      ssh "$SSH_TARGET" "mysqldump -h '$HOST' -P '$PORT' -u '$USER' -p'$PASSWORD' '$DATABASE'" > "$DUMP_FILE"
+    else
+      # No password provided, prompt
+      echo "You will be prompted for the MySQL password on the remote host."
+      ssh "$SSH_TARGET" "mysqldump -h '$HOST' -P '$PORT' -u '$USER' -p '$DATABASE'" > "$DUMP_FILE"
+    fi
+  else
+    # Local/within-container dump
+    echo "Dumping remote database $DATABASE from $USER@$HOST:$PORT to $DUMP_FILE..."
+    if [ -n "$PASSWORD" ]; then
+      ddev exec mysqldump -h "$HOST" -P "$PORT" -u "$USER" -p"$PASSWORD" "$DATABASE" > "$DUMP_FILE"
+    else
+      echo "You will be prompted for the MySQL password."
+      ddev exec mysqldump -h "$HOST" -P "$PORT" -u "$USER" -p "$DATABASE" > "$DUMP_FILE"
+    fi
+  fi
+
+  # Ensure the dump file is synchronized before modifying it
+  ddev mutagen sync || true
+
+  # Replace the definer statements from the dump
+  echo "Replacing DEFINER statements in $DUMP_FILE..."
+  ddev exec "sed -i 's/DEFINER=[^*]*\*/\*/g' $DUMP_FILE"
+
+  # Ensure the dump file is synchronized after modifying it
+  ddev mutagen sync || true
+
+  echo "Database dump saved to $DUMP_FILE."
+}
+
+echo
+
+if [ -f "$DUMP_FILE" ]; then
+  # Show last modified timestamp (Linux only)
+  TS=$(stat -c '%y' "$DUMP_FILE")
+  echo "A database dump for '$DATABASE' already exists (last created: $TS)."
+  read -p "Would you like to create a fresh dump? (y/n): " OVERWRITE
+  if [[ "$OVERWRITE" =~ ^[Yy]$ ]]; then
+    dump_and_clean
+  else
+    echo "Using existing $DUMP_FILE."
+  fi
+else
+  dump_and_clean
+fi
+
+echo "Importing $DUMP_FILE into DDEV..."
+ddev import-db --file="$DUMP_FILE"
+
+echo "Import complete."

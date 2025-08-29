@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+# #ddev-generated: If you want to edit and own this file, remove this line.
+# Description: Import a remote MySQL database into DDEV using 1Password
+# Usage: ddev import-remote-db-1pw <1pw-item-uuid>
+# Example: ddev import-remote-db-1pw 0198f64f-5ac6-79a5-8238-750890b87ce5
+
+# Prompt user for 1Password item title
+read -p "Enter the 1Password item UUID: " ITEM_TITLE
+
+# Check if user provided something
+if [[ -z "$ITEM_TITLE" ]]; then
+  echo "❌ No item UUID provided. Exiting."
+  exit 1
+fi
+
+# Login to 1Password
+eval $(op signin) || { echo "❌ 1Password signin failed."; exit 1; }
+
+# Fetch fields from 1Password
+ITEM_JSON=$(op item get "$ITEM_TITLE" --format json 2>&1)
+
+if [[ $? -eq 1 ]]; then
+  echo "❌ Failed to fetch 1Password item. Exiting."
+  echo "❌ Error: $ITEM_JSON"
+  exit 1
+fi
+
+# check if ssh is required
+read -p "Is SSH required? (y/n): " SSH_REQUIRED
+
+# Helper function to extract a field from the JSON, trying multiple possible keys
+get_field() {
+  local json="$1"
+  local keys=("$@")
+  unset keys[0]
+  for key in "${keys[@]}"; do
+    value=$(echo "$json" | jq -r --arg key "$key" '.fields[]? | select(.label==$key or .id==$key) | .value' | head -n1)
+    if [[ -n "$value" && "$value" != "null" ]]; then
+      echo "$value"
+      return
+    fi
+  done
+}
+
+HOST=$(get_field "$ITEM_JSON" host server DB_HOST)
+USER=$(get_field "$ITEM_JSON" username DB_USERNAME)
+PASS=$(get_field "$ITEM_JSON" password DB_PASSWORD)
+DB=$(get_field "$ITEM_JSON" database DB_DATABASE)
+SSH_HOST=$(get_field "$ITEM_JSON" SSH_HOST)
+SSH_USER=$(get_field "$ITEM_JSON" SSH_USER)
+
+if [[ "$SSH_REQUIRED" =~ ^[Yy]$ ]]; then
+  if [[ -z "$SSH_HOST" ]]; then
+    read -p "Enter SSH host: " SSH_HOST
+  fi
+  if [[ -z "$SSH_USER" ]]; then
+    read -p "Enter SSH user: " SSH_USER
+  fi
+fi
+
+# Fallback to default port if not set
+if [[ -z "$PORT" ]]; then
+  PORT="3306"
+fi
+
+# Check required fields
+if [[ -z "$USER" || -z "$PASS" || -z "$DB" || -z "$HOST" ]]; then
+  echo "❌ Missing one or more required fields from 1Password item."
+  exit 1
+fi
+
+ddev import-remote-db --host "$HOST" --user "$USER" --database "$DB" --port "$PORT" --ssh-host "$SSH_HOST" --ssh-user "$SSH_USER" --password "$PASS"
+ddev tableplus

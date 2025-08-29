@@ -7,7 +7,8 @@
 
 ## Overview
 
-This add-on integrates Import Remote Db into your [DDEV](https://ddev.com/) project.
+This add-on allows you to import a remote MySQL database into your local [DDEV](https://ddev.com/) database.
+It supports direct connections as well as SSH tunneling for secure access to remote databases.
 
 ## Installation
 
