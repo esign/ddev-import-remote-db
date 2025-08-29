@@ -5,6 +5,12 @@
 # Usage: ddev import-remote-db-1pw <1pw-item-uuid>
 # Example: ddev import-remote-db-1pw 0198f64f-5ac6-79a5-8238-750890b87ce5
 
+# Check if 1Password CLI is installed
+if ! command -v op >/dev/null 2>&1; then
+  echo "❌ 1Password CLI ('op') is not installed. Please install it from https://developer.1password.com/docs/cli/get-started/"
+  exit 1
+fi
+
 # Prompt user for 1Password item title
 read -p "Enter the 1Password item UUID: " ITEM_TITLE
 
