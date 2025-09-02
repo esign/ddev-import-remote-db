@@ -124,8 +124,17 @@ dump_and_clean() {
 echo
 
 if [ -f "$DUMP_FILE" ]; then
-  # Show last modified timestamp (Linux only)
-  TS=$(stat -c '%y' "$DUMP_FILE")
+  # Show last modified timestamp (macOS/Linux)
+  if stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$DUMP_FILE" >/dev/null 2>&1; then
+    # macOS/BSD stat
+    TS=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$DUMP_FILE")
+  elif stat -c '%y' "$DUMP_FILE" >/dev/null 2>&1; then
+    # GNU coreutils stat (Linux)
+    TS=$(stat -c '%y' "$DUMP_FILE")
+  else
+    # Fallback: parse from ls -lT output
+    TS=$(ls -lT "$DUMP_FILE" 2>/dev/null | awk '{print $6" "$7" "$8" "$9" "$10}')
+  fi
   echo "A database dump for '$DATABASE' already exists (last created: $TS)."
   read -p "Would you like to create a fresh dump? (y/n): " OVERWRITE
   if [[ "$OVERWRITE" =~ ^[Yy]$ ]]; then
