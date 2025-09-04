@@ -68,18 +68,8 @@ fi
 # Ensure export directory exists
 mkdir -p "$EXPORT_DIR"
 
-
-# Ensure .gitignore contains import-remote-db/ entry
-ensure_gitignore_has_import_remote_db() {
-  GITIGNORE_FILE=".ddev/.gitignore"
-  if [ ! -f "$GITIGNORE_FILE" ]; then
-    echo "import-remote-db/" > "$GITIGNORE_FILE"
-  elif ! grep -qxF "import-remote-db/" "$GITIGNORE_FILE"; then
-    echo "import-remote-db/" >> "$GITIGNORE_FILE"
-  fi
-}
-
-ensure_gitignore_has_import_remote_db
+# Create .gitignore in the import-remote-db directory to ignore everything
+echo "*" > "$EXPORT_DIR/.gitignore"
 
 dump_and_clean() {
   if [ -n "$SSH_HOST" ]; then
