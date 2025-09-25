@@ -62,6 +62,19 @@ This command uses the [1Password CLI](https://developer.1password.com/docs/cli/g
 3. You will be asked if SSH is required. If so, you can provide SSH host/user if not present in the item.
 4. The script will run `ddev import-remote-db` with the fetched credentials.
 
+**1Password Item Fields:**
+
+The script will look for the following fields in your 1Password item (it tries multiple field names for flexibility):
+
+| Purpose | Field Names (tries in order) | Required |
+|---------|------------------------------|----------|
+| Database Host | `host`, `server`, `DB_HOST` | Yes |
+| Database Username | `username`, `DB_USERNAME` | Yes |
+| Database Password | `password`, `DB_PASSWORD` | Yes |
+| Database Name | `database`, `DB_DATABASE` | Yes |
+| SSH Host | `SSH_HOST` | No (prompted if SSH required) |
+| SSH Username | `SSH_USER` | No (prompted if SSH required) |
+
 **Example:**
 
 ```bash
