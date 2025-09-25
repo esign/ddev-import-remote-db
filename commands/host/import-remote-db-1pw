@@ -11,8 +11,12 @@ if ! command -v op >/dev/null 2>&1; then
   exit 1
 fi
 
-# Prompt user for 1Password item title
-read -p "Enter the 1Password item UUID: " ITEM_TITLE
+# Use command line argument if provided, otherwise prompt user
+if [[ -n "$1" ]]; then
+  ITEM_TITLE="$1"
+else
+  read -p "Enter the 1Password item UUID: " ITEM_TITLE
+fi
 
 # Check if user provided something
 if [[ -z "$ITEM_TITLE" ]]; then
