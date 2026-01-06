@@ -2,14 +2,15 @@
 
 ## #ddev-generated: If you want to edit and own this file, remove this line.
 # Description: Import a remote MySQL database into DDEV
-# Usage: ddev import-remote-db --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>] [--password <password>]
-# Example: ddev import-remote-db --host db.example.com --user dbuser --database dbname --port 3307 --ssh-host ssh.example.com --ssh-user remoteuser --password mypass
+# Usage: ddev import-remote-db --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>] [--password <password>] [--target-db <target_db>]
+# Example: ddev import-remote-db --host db.example.com --user dbuser --database dbname --port 3307 --ssh-host ssh.example.com --ssh-user remoteuser --password mypass --target-db db
 
 set -e
 
 
 # Default values
 PORT=3306
+TARGET_DB="db"
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
@@ -43,13 +44,17 @@ while [[ $# -gt 0 ]]; do
       PASSWORD="$2"
       shift; shift
       ;;
+    --target-db)
+      TARGET_DB="$2"
+      shift; shift
+      ;;
     -h|--help)
-      echo "Usage: $0 --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>] [--password <password>]"
+      echo "Usage: $0 --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>] [--password <password>] [--target-db <target_db>]"
       exit 0
       ;;
     *)
       echo "Unknown option: $1"
-      echo "Usage: $0 --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>] [--password <password>]"
+      echo "Usage: $0 --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>] [--password <password>] [--target-db <target_db>]"
       exit 1
       ;;
   esac
@@ -61,7 +66,7 @@ DUMP_FILE="$EXPORT_DIR/${DATABASE}_remote_dump.sql"
 
 
 if [ -z "$HOST" ] || [ -z "$USER" ] || [ -z "$DATABASE" ]; then
-  echo "Usage: $0 --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>]"
+  echo "Usage: $0 --host <host> --user <user> --database <database> [--port <port>] [--ssh-host <ssh_host>] [--ssh-user <ssh_user>] [--password <password>] [--target-db <target_db>]"
   exit 1
 fi
 
@@ -136,7 +141,7 @@ else
   dump_and_clean
 fi
 
-echo "Importing $DUMP_FILE into DDEV..."
-ddev import-db --file="$DUMP_FILE"
+echo "Importing $DUMP_FILE into DDEV database '$TARGET_DB'..."
+ddev import-db --file="$DUMP_FILE" --target-db="$TARGET_DB"
 
 echo "Import complete."
