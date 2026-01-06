@@ -142,6 +142,6 @@ else
 fi
 
 echo "Importing $DUMP_FILE into DDEV database '$TARGET_DB'..."
-ddev import-db --file="$DUMP_FILE" --target-db="$TARGET_DB"
+ddev import-db --file="$DUMP_FILE" --database="$TARGET_DB"
 
 echo "Import complete."
