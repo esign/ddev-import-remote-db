@@ -52,6 +52,28 @@ health_checks() {
   assert_output --partial "FULLURL https://${PROJNAME}.ddev.site"
 }
 
+@test "import-remote-db command accepts --target-db flag" {
+  set -eu -o pipefail
+  run ddev add-on get "${DIR}"
+  assert_success
+  run ddev restart -y
+  assert_success
+  run ddev import-remote-db --help
+  assert_success
+  assert_output --partial "--target-db"
+}
+
+@test "import-remote-db-1pw command accepts --target-db flag" {
+  set -eu -o pipefail
+  run ddev add-on get "${DIR}"
+  assert_success
+  run ddev restart -y
+  assert_success
+  run ddev import-remote-db-1pw --help
+  assert_success
+  assert_output --partial "--target-db"
+}
+
 teardown() {
   set -eu -o pipefail
   ddev delete -Oy ${PROJNAME} >/dev/null 2>&1

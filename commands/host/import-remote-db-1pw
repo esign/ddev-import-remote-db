@@ -2,8 +2,36 @@
 
 # #ddev-generated: If you want to edit and own this file, remove this line.
 # Description: Import a remote MySQL database into DDEV using 1Password
-# Usage: ddev import-remote-db-1pw <1pw-item-uuid>
-# Example: ddev import-remote-db-1pw 0198f64f-5ac6-79a5-8238-750890b87ce5
+# Usage: ddev import-remote-db-1pw <1pw-item-uuid> [--target-db <target_db>]
+# Example: ddev import-remote-db-1pw 0198f64f-5ac6-79a5-8238-750890b87ce5 --target-db db
+
+# Default values
+TARGET_DB="db"
+
+# Parse flags
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  case $key in
+    --target-db)
+      TARGET_DB="$2"
+      shift; shift
+      ;;
+    -h|--help)
+      echo "Usage: $0 <1pw-item-uuid> [--target-db <target_db>]"
+      echo "Example: $0 0198f64f-5ac6-79a5-8238-750890b87ce5 --target-db db"
+      exit 0
+      ;;
+    -*)
+      echo "Unknown option: $1"
+      echo "Usage: $0 <1pw-item-uuid> [--target-db <target_db>]"
+      exit 1
+      ;;
+    *)
+      ITEM_UUID="$1"
+      shift
+      ;;
+  esac
+done
 
 # Check if 1Password CLI is installed
 if ! command -v op >/dev/null 2>&1; then
@@ -12,9 +40,7 @@ if ! command -v op >/dev/null 2>&1; then
 fi
 
 # Use command line argument if provided, otherwise prompt user
-if [[ -n "$1" ]]; then
-  ITEM_UUID="$1"
-else
+if [[ -z "$ITEM_UUID" ]]; then
   read -p "Enter the 1Password item UUID: " ITEM_UUID
 fi
 
@@ -80,5 +106,5 @@ if [[ -z "$USER" || -z "$PASS" || -z "$DB" || -z "$HOST" ]]; then
   exit 1
 fi
 
-ddev import-remote-db --host "$HOST" --user "$USER" --database "$DB" --port "$PORT" --ssh-host "$SSH_HOST" --ssh-user "$SSH_USER" --password "$PASS"
+ddev import-remote-db --host "$HOST" --user "$USER" --database "$DB" --port "$PORT" --ssh-host "$SSH_HOST" --ssh-user "$SSH_USER" --password "$PASS" --target-db "$TARGET_DB"
 ddev tableplus
